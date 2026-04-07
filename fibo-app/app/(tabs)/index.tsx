@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowRight } from 'lucide-react-native';
@@ -7,12 +7,6 @@ import { ArrowRight } from 'lucide-react-native';
 export default function Splash() {
   const router = useRouter();
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      router.replace('/welcome');
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [router]);
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
@@ -24,9 +18,13 @@ export default function Splash() {
         </Text>
       </View>
       
-      <View style={styles.iconContainer}>
+      <TouchableOpacity
+        style={styles.iconContainer}
+        onPress={() => router.replace('/welcome')}
+        activeOpacity={0.8}
+      >
         <ArrowRight size={32} color="#EAC435" />
-      </View>
+      </TouchableOpacity>
     </View>
   );
 }
