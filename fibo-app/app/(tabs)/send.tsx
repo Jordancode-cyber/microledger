@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+// 1. We added ScrollView to the imports!
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
@@ -44,7 +45,13 @@ export default function SendMoney() {
         <View style={{ width: 28 }} />
       </View>
 
-      <View style={styles.content}>
+      {/* 2. Replaced <View> with <ScrollView> to make it fluid! */}
+      {/* keyboardShouldPersistTaps="handled" is the magic that lets you click the button while the keyboard is open */}
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.amountContainer}>
           <Text style={styles.currencyLabel}>UGX</Text>
           <Text style={styles.amountText}>{parseInt(amount).toLocaleString()}</Text>
@@ -70,7 +77,7 @@ export default function SendMoney() {
         >
           <Text style={styles.buttonText}>CONFIRM & CONTINUE</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -80,7 +87,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },
   backButton: { padding: 8, marginLeft: -8 },
   headerTitle: { fontSize: 16, fontWeight: '700', letterSpacing: 1 },
-  content: { flex: 1, paddingHorizontal: 24, alignItems: 'center' },
+  
+  // 3. Changed `flex: 1` to `flexGrow: 1` and added paddingBottom so nothing gets cut off!
+  content: { flexGrow: 1, paddingHorizontal: 24, alignItems: 'center', paddingBottom: 40 },
+  
   amountContainer: { alignItems: 'center', marginBottom: 32 },
   currencyLabel: { fontSize: 16, color: '#666', fontWeight: '600' },
   amountText: { fontSize: 48, fontWeight: 'bold', color: '#003366' },

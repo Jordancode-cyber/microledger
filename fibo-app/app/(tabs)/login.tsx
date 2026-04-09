@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
@@ -27,7 +27,11 @@ export default function Login() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Enter your phone number to continue</Text>
 
@@ -59,7 +63,7 @@ export default function Login() {
         >
           <Text style={styles.forgotText}>Forgot PIN?</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -68,7 +72,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#E8E9EB' },
   header: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },
   backButton: { width: 40, height: 40, justifyContent: 'center' },
-  content: { flex: 1, paddingHorizontal: 24 },
+  content: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
   title: { fontSize: 24, fontWeight: '700', color: '#000', marginBottom: 8 },
   subtitle: { fontSize: 16, color: '#666', marginBottom: 32 },
   form: { marginBottom: 32 },

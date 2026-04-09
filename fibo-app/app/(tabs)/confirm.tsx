@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
-import { sendMoney } from './api';
+import { sendMoney } from '../../src/services/api';
 
 export default function Confirm() {
   const router = useRouter();

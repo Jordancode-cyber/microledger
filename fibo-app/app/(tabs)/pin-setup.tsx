@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
 import NumberPad from '../../components/NumberPad';
-import { supabase } from '../../src/styles/supabase'; // (Or wherever you saved your supabase.ts file)
+import { supabase } from '../../src/supabase'; // Adjusted to the correct path!
 
 export default function PinSetup() {
   const router = useRouter();
@@ -28,16 +28,23 @@ export default function PinSetup() {
         setTimeout(async () => {
           if (newConfirmPin === pin) {
             try {
-              const { user } = await registerUser({
-                userType: String(userType || 'customer'),
-                phoneNumber: String(phoneNumber || ''),
-                pin: newConfirmPin,
-                name: String(name || ''),
-                businessName: String(businessName || ''),
-              });
+              // THIS IS THE NEW SUPABASE FIX! Directly insert the user into the database
+              const { data: user, error } = await supabase.from('users').insert([
+                {
+                  user_type: String(userType || 'customer'),
+                  phone_number: String(phoneNumber || ''),
+                  pin: newConfirmPin,
+                  name: String(name || ''),
+                  business_name: String(businessName || ''),
+                  balance: 0 // New users start with 0 float
+                }
+              ]).select().single();
+
+              if (error) throw error;
 
               const userName = user.business_name || user.name || user.phone_number;
               const balance = String(user.balance ?? 0);
+              
               router.replace({
                 pathname: '/dashboard',
                 params: {
@@ -75,21 +82,14 @@ export default function PinSetup() {
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ChevronLeft size={28} color="#000" />
         </TouchableOpacity>
       </View>
-
       <View style={styles.content}>
-        <Text style={styles.title}>
-          {isConfirming ? 'CONFIRM YOUR PIN' : 'CREATE YOUR PIN'}
-        </Text>
-        <Text style={styles.subtitle}>
-          {isConfirming ? 'Re-enter your 4-digit PIN' : 'Enter a secure 4-digit PIN'}
-        </Text>
-
+        <Text style={styles.title}>{isConfirming ? 'CONFIRM YOUR PIN' : 'CREATE YOUR PIN'}</Text>
+        <Text style={styles.subtitle}>{isConfirming ? 'Re-enter your 4-digit PIN' : 'Enter a secure 4-digit PIN'}</Text>
         <View style={styles.dotsContainer}>
           {[0, 1, 2, 3].map((i) => (
             <View key={i} style={styles.dotOutline}>
@@ -97,14 +97,12 @@ export default function PinSetup() {
             </View>
           ))}
         </View>
-
         <NumberPad onNumberPress={handleNumberPress} onDelete={handleDelete} />
       </View>
     </View>
   );
 }
 
-// Reuse the exact same styles as PinInput!
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#E8E9EB' },
   header: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },

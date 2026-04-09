@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft, Check } from 'lucide-react-native';
-import { resetPin } from './auth';
+import { resetPin } from '../../src/services/auth'; // Kept your updated path!
 
 export default function ForgotPin() {
   const router = useRouter();
@@ -55,7 +55,11 @@ export default function ForgotPin() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.title}>Reset Your PIN</Text>
         <Text style={styles.subtitle}>Enter your phone number to receive a PIN reset link</Text>
 
@@ -78,7 +82,7 @@ export default function ForgotPin() {
         >
           <Text style={styles.buttonText}>{loading ? 'SENDING...' : 'REQUEST RESET'}</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -87,7 +91,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#E8E9EB' },
   header: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },
   backButton: { width: 40, height: 40, justifyContent: 'center' },
-  content: { flex: 1, paddingHorizontal: 24 },
+  content: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
   successContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, marginTop: -60 },
   iconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#EAC435', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   title: { fontSize: 24, fontWeight: '700', color: '#000', marginBottom: 8, textAlign: 'center' },

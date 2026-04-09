@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
 import NumberPad from '../../components/NumberPad';
-import { processWithdrawal } from './api';
+import { processWithdrawal } from '../../src/services/api'; // Kept your updated path!
 
 export default function WithdrawFloat() {
   const router = useRouter();
@@ -62,7 +62,11 @@ export default function WithdrawFloat() {
         <View style={{ width: 28 }} />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.amountContainer}>
           <Text style={styles.currencyLabel}>UGX</Text>
           <Text style={styles.amountText}>{parseInt(amount).toLocaleString()}</Text>
@@ -96,18 +100,17 @@ export default function WithdrawFloat() {
         >
           <Text style={styles.buttonText}>{loading ? 'REQUESTING...' : 'REQUEST WITHDRAWAL'}</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-// Reuse the exact same styles from DepositFloat!
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#E8E9EB' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },
   backButton: { padding: 8, marginLeft: -8 },
   headerTitle: { fontSize: 16, fontWeight: '700', letterSpacing: 1 },
-  content: { flex: 1, paddingHorizontal: 24, alignItems: 'center' },
+  content: { flexGrow: 1, paddingHorizontal: 24, alignItems: 'center', paddingBottom: 40 },
   amountContainer: { alignItems: 'center', marginBottom: 32 },
   currencyLabel: { fontSize: 16, color: '#666', fontWeight: '600' },
   amountText: { fontSize: 48, fontWeight: 'bold', color: '#003366' },
