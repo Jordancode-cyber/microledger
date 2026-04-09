@@ -2,20 +2,36 @@ import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
 
 const expoConfig = Constants.expoConfig || {};
-const supabaseUrl =
-  String(expoConfig.extra?.supabaseUrl || expoConfig.extra?.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || '')
-    .trim();
-const supabaseAnonKey =
-  String(expoConfig.extra?.supabaseAnonKey || expoConfig.extra?.SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '')
-    .trim();
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing Supabase configuration. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your environment.',
-  );
+function getSupabaseConfig() {
+  const supabaseUrl = String(
+    expoConfig.extra?.supabaseUrl ||
+      expoConfig.extra?.SUPABASE_URL ||
+      process.env.EXPO_PUBLIC_SUPABASE_URL ||
+      '',
+  ).trim();
+
+  const supabaseAnonKey = String(
+    expoConfig.extra?.supabaseAnonKey ||
+      expoConfig.extra?.SUPABASE_ANON_KEY ||
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+      '',
+  ).trim();
+
+  return { supabaseUrl, supabaseAnonKey };
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+function getSupabaseClient() {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      'Missing Supabase configuration. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your environment.',
+    );
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
 
 function phoneToEmail(phoneNumber: string) {
   const digits = String(phoneNumber || '')
@@ -32,6 +48,7 @@ export async function registerUser(payload: {
   businessName?: string;
 }) {
   const email = phoneToEmail(payload.phoneNumber);
+  const supabase = getSupabaseClient();
 
   const { data, error } = await supabase.auth.signUp(
     {
@@ -67,6 +84,7 @@ export async function registerUser(payload: {
 
 export async function loginUser(payload: { phoneNumber: string; pin: string }) {
   const email = phoneToEmail(payload.phoneNumber);
+  const supabase = getSupabaseClient();
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -91,6 +109,7 @@ export async function loginUser(payload: { phoneNumber: string; pin: string }) {
 
 export async function resetPin(phoneNumber: string) {
   const email = phoneToEmail(phoneNumber);
+  const supabase = getSupabaseClient();
 
   const { error } = await supabase.auth.resetPasswordForEmail(email);
 

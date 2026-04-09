@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
 import NumberPad from '../../components/NumberPad';
-import { registerUser } from './auth';
+import { supabase } from '../../src/styles/supabase'; // (Or wherever you saved your supabase.ts file)
 
 export default function PinSetup() {
   const router = useRouter();

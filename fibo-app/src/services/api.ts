@@ -1,8 +1,7 @@
-import Constants from 'expo-constants';
+// src/services/api.ts
 
-const expoConfig = Constants.expoConfig || {};
-const API_BASE =
-  String(expoConfig.extra?.apiUrl || process.env.EXPO_PUBLIC_API_URL || 'https://fibo-backend-7cid.vercel.app/api').trim();
+// Automatically uses your local .env if it exists, otherwise falls back to your live Vercel backend!
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://fibo-backend-7cid.vercel.app/api';
 
 export async function processDeposit(payload: {
   amount: number;
