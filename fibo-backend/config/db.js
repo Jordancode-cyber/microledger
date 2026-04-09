@@ -1,19 +1,15 @@
-// config/db.js
-const mysql = require('mysql2/promise');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+const { createClient } = require('@supabase/supabase-js');
 
-const pool = mysql.createPool({
-    uri: process.env.DATABASE_URL,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
-pool.getConnection()
-    .then(connection => {
-        console.log('✅ Connected to Aiven Cloud MySQL!');
-        connection.release();
-    })
-    .catch(err => console.error('❌ Database connection failed:', err.message));
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Missing Supabase credentials in .env');
+  process.exit(1);
+}
 
-module.exports = pool;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+module.exports = supabase;
