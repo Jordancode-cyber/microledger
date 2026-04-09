@@ -1,16 +1,16 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import BottomNav from '../../components/BottomNav';
 
 export default function Dashboard() {
   const router = useRouter();
+  const { userType, userName, balance } = useLocalSearchParams();
   
-  // For prototype testing: toggle this to see customer vs vendor view
-  const isVendor = true; 
-  const balance = 50000;
-  const userName = isVendor ? "UCU Main Canteen" : "John Doe";
+  const isVendor = String(userType || 'customer').toLowerCase() === 'vendor';
+  const displayName = String(userName || (isVendor ? 'UCU Main Canteen' : 'John Doe'));
+  const displayBalance = Number(balance ?? (isVendor ? 50000 : 50000));
 
   return (
     <View style={styles.container}>
@@ -18,12 +18,12 @@ export default function Dashboard() {
       
       <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={styles.header}>
-          <Text style={styles.greeting}>Hello, <Text style={styles.bold}>{userName}</Text></Text>
+          <Text style={styles.greeting}>Hello, <Text style={styles.bold}>{displayName}</Text></Text>
         </View>
 
         <View style={styles.balanceCard}>
           <Text style={styles.cardTitle}>{isVendor ? 'AVAILABLE FLOAT' : 'CURRENT COINS'}</Text>
-          <Text style={styles.balanceText}>{balance.toLocaleString()} UGX</Text>
+          <Text style={styles.balanceText}>{displayBalance.toLocaleString()} UGX</Text>
 
           {isVendor && (
             <View style={styles.actionRow}>

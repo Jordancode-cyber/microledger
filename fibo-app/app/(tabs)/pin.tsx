@@ -1,26 +1,50 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
 import NumberPad from '../../components/NumberPad';
+import { loginUser } from './api';
 
 export default function PinInput() {
   const router = useRouter();
   const { phoneNumber } = useLocalSearchParams();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleNumberPress = (num: string) => {
-    if (pin.length < 4) {
+    if (pin.length < 4 && !loading) {
       const newPin = pin + num;
       setPin(newPin);
       
       if (newPin.length === 4) {
         // Automatically check PIN when 4 digits are entered
-        setTimeout(() => {
-          // TODO: Replace with real Supabase Auth check
-          router.replace('/welcome'); // Go to welcome when PIN is entered
+        setLoading(true);
+        setTimeout(async () => {
+          try {
+            const { user } = await loginUser({
+              phoneNumber: String(phoneNumber || ''),
+              pin: newPin,
+            });
+
+            const userName = user.business_name || user.name || user.phone_number;
+            const balance = String(user.balance ?? 0);
+            router.replace({
+              pathname: '/dashboard',
+              params: {
+                userType: String(user.user_type || 'customer'),
+                userName,
+                balance,
+              },
+            });
+          } catch (loginError: any) {
+            setError(loginError.message || 'Invalid PIN');
+            setPin('');
+            Alert.alert('Login failed', loginError.message || 'Invalid phone number or PIN');
+          } finally {
+            setLoading(false);
+          }
         }, 500);
       }
     }

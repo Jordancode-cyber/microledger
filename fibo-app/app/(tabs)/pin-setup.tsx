@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
 import NumberPad from '../../components/NumberPad';
+import { registerUser } from './api';
 
 export default function PinSetup() {
   const router = useRouter();
-  
+  const { userType, name, businessName, phoneNumber } = useLocalSearchParams();
+
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleNumberPress = (num: string) => {
     if (!isConfirming && pin.length < 4) {
@@ -23,12 +26,38 @@ export default function PinSetup() {
       const newConfirmPin = confirmPin + num;
       setConfirmPin(newConfirmPin);
       if (newConfirmPin.length === 4) {
-        setTimeout(() => {
+        setTimeout(async () => {
           if (newConfirmPin === pin) {
-            // TODO: Save user to Supabase here
-            router.replace('/welcome');
+            setLoading(true);
+            try {
+              const { user } = await registerUser({
+                userType: String(userType || 'customer'),
+                phoneNumber: String(phoneNumber || ''),
+                pin: newConfirmPin,
+                name: String(name || ''),
+                businessName: String(businessName || ''),
+              });
+
+              const userName = user.business_name || user.name || user.phone_number;
+              const balance = String(user.balance ?? 0);
+              router.replace({
+                pathname: '/dashboard',
+                params: {
+                  userType: String(user.user_type || userType || 'customer'),
+                  userName,
+                  balance,
+                },
+              });
+            } catch (registerError: any) {
+              Alert.alert('Registration failed', registerError.message || 'Unable to create account');
+              setConfirmPin('');
+              setIsConfirming(false);
+              setPin('');
+            } finally {
+              setLoading(false);
+            }
           } else {
-            alert('PINs do not match. Try again.');
+            Alert.alert('PINs do not match. Try again.');
             setConfirmPin('');
           }
         }, 300);
@@ -45,6 +74,8 @@ export default function PinSetup() {
   };
 
   const currentPin = isConfirming ? confirmPin : pin;
+  const title = isConfirming ? 'CONFIRM YOUR PIN' : 'CREATE YOUR PIN';
+  const subtitle = isConfirming ? 'Re-enter your 4-digit PIN' : 'Enter a secure 4-digit PIN';
 
   return (
     <View style={styles.container}>
