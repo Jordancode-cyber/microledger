@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
 import NumberPad from '../../components/NumberPad';
-import { registerUser } from './api';
+import { registerUser } from './auth';
 
 export default function PinSetup() {
   const router = useRouter();
@@ -13,7 +13,6 @@ export default function PinSetup() {
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   const handleNumberPress = (num: string) => {
     if (!isConfirming && pin.length < 4) {
@@ -28,7 +27,6 @@ export default function PinSetup() {
       if (newConfirmPin.length === 4) {
         setTimeout(async () => {
           if (newConfirmPin === pin) {
-            setLoading(true);
             try {
               const { user } = await registerUser({
                 userType: String(userType || 'customer'),
@@ -46,6 +44,7 @@ export default function PinSetup() {
                   userType: String(user.user_type || userType || 'customer'),
                   userName,
                   balance,
+                  phoneNumber: String(user.phone_number || phoneNumber || ''),
                 },
               });
             } catch (registerError: any) {
@@ -53,8 +52,6 @@ export default function PinSetup() {
               setConfirmPin('');
               setIsConfirming(false);
               setPin('');
-            } finally {
-              setLoading(false);
             }
           } else {
             Alert.alert('PINs do not match. Try again.');
@@ -74,8 +71,6 @@ export default function PinSetup() {
   };
 
   const currentPin = isConfirming ? confirmPin : pin;
-  const title = isConfirming ? 'CONFIRM YOUR PIN' : 'CREATE YOUR PIN';
-  const subtitle = isConfirming ? 'Re-enter your 4-digit PIN' : 'Enter a secure 4-digit PIN';
 
   return (
     <View style={styles.container}>

@@ -1,19 +1,15 @@
 import Constants from 'expo-constants';
 
-const expoConfig = (Constants.expoConfig || Constants.manifest) as { extra?: { apiUrl?: string } } | undefined;
-const apiUrlFromConfig = expoConfig?.extra?.apiUrl;
-const debuggerHost = (Constants.manifest as any)?.debuggerHost;
-const expoLocalHost = debuggerHost ? `http://${debuggerHost.split(':')[0]}:3000` : undefined;
-const API_BASE = apiUrlFromConfig || process.env.EXPO_PUBLIC_API_URL || expoLocalHost || 'http://localhost:3000';
+const expoConfig = Constants.expoConfig || {};
+const API_BASE =
+  String(expoConfig.extra?.apiUrl || process.env.EXPO_PUBLIC_API_URL || 'https://fibo-backend-7cid.vercel.app/api').trim();
 
-export async function registerUser(payload: {
-  userType: string;
+export async function processDeposit(payload: {
+  amount: number;
+  provider: string; // 'mtn' or 'airtel'
   phoneNumber: string;
-  pin: string;
-  name?: string;
-  businessName?: string;
 }) {
-  const response = await fetch(`${API_BASE}/api/register`, {
+  const response = await fetch(`${API_BASE}/deposit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -21,14 +17,18 @@ export async function registerUser(payload: {
 
   const body = await response.json();
   if (!response.ok) {
-    throw new Error(body.error || 'Registration failed');
+    throw new Error(body.error || 'Deposit failed');
   }
 
   return body;
 }
 
-export async function loginUser(payload: { phoneNumber: string; pin: string }) {
-  const response = await fetch(`${API_BASE}/api/login`, {
+export async function processWithdrawal(payload: {
+  amount: number;
+  provider: string;
+  phoneNumber: string;
+}) {
+  const response = await fetch(`${API_BASE}/withdraw`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -36,7 +36,25 @@ export async function loginUser(payload: { phoneNumber: string; pin: string }) {
 
   const body = await response.json();
   if (!response.ok) {
-    throw new Error(body.error || 'Login failed');
+    throw new Error(body.error || 'Withdrawal failed');
+  }
+
+  return body;
+}
+
+export async function sendMoney(payload: {
+  amount: number;
+  phoneNumber: string;
+}) {
+  const response = await fetch(`${API_BASE}/send`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const body = await response.json();
+  if (!response.ok) {
+    throw new Error(body.error || 'Send failed');
   }
 
   return body;

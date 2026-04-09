@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
 import NumberPad from '../../components/NumberPad';
+import { processWithdrawal } from './api';
 
 export default function WithdrawFloat() {
   const router = useRouter();
+  const { phoneNumber } = useLocalSearchParams();
   const [amount, setAmount] = useState('0');
   const [provider, setProvider] = useState<'mtn' | 'airtel' | null>(null);
+  const [loading, setLoading] = useState(false);
   const userBalance = 50000; // Mock balance
 
   const handleNumberPress = (num: string) => {
@@ -19,18 +22,31 @@ export default function WithdrawFloat() {
     setAmount(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
   };
 
-  const handleWithdraw = () => {
-    if (parseInt(amount) > userBalance) {
-      Alert.alert("Error", "Insufficient float balance for this withdrawal.");
+  const handleWithdraw = async () => {
+    if (parseInt(amount, 10) > userBalance) {
+      Alert.alert('Error', 'Insufficient float balance for this withdrawal.');
       return;
     }
 
     if (amount !== '0' && provider) {
-      Alert.alert(
-        "Withdrawal Successful", 
-        `${parseInt(amount).toLocaleString()} UGX has been sent to your ${provider.toUpperCase()} mobile money account.`,
-        [{ text: "OK", onPress: () => router.push('/dashboard') }]
-      );
+      setLoading(true);
+      try {
+        await processWithdrawal({
+          amount: parseInt(amount, 10),
+          provider,
+          phoneNumber: String(phoneNumber || ''),
+        });
+
+        Alert.alert(
+          'Withdrawal Successful',
+          `${parseInt(amount, 10).toLocaleString()} UGX has been sent to your ${provider.toUpperCase()} mobile money account.`,
+          [{ text: 'OK', onPress: () => router.push('/dashboard') }],
+        );
+      } catch (error: any) {
+        Alert.alert('Withdrawal failed', error.message || 'Unable to process withdrawal.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -74,11 +90,11 @@ export default function WithdrawFloat() {
         <NumberPad onNumberPress={handleNumberPress} onDelete={handleDelete} />
 
         <TouchableOpacity
-          style={[styles.button, (amount === '0' || !provider) && styles.buttonDisabled]}
+          style={[styles.button, (amount === '0' || !provider || loading) && styles.buttonDisabled]}
           onPress={handleWithdraw}
-          disabled={amount === '0' || !provider}
+          disabled={amount === '0' || !provider || loading}
         >
-          <Text style={styles.buttonText}>REQUEST WITHDRAWAL</Text>
+          <Text style={styles.buttonText}>{loading ? 'REQUESTING...' : 'REQUEST WITHDRAWAL'}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

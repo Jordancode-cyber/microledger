@@ -1,18 +1,27 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft, Check } from 'lucide-react-native';
+import { resetPin } from './auth';
 
 export default function ForgotPin() {
   const router = useRouter();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (phoneNumber) {
-      setSubmitted(true);
-      // In real app, trigger Supabase password reset SMS
+      setLoading(true);
+      try {
+        await resetPin(phoneNumber);
+        setSubmitted(true);
+      } catch (error: any) {
+        Alert.alert('Reset failed', error.message || 'Unable to send reset link.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -63,11 +72,11 @@ export default function ForgotPin() {
         </View>
 
         <TouchableOpacity
-          style={[styles.button, !phoneNumber && styles.buttonDisabled]}
+          style={[styles.button, (!phoneNumber || loading) && styles.buttonDisabled]}
           onPress={handleSubmit}
-          disabled={!phoneNumber}
+          disabled={!phoneNumber || loading}
         >
-          <Text style={styles.buttonText}>REQUEST RESET</Text>
+          <Text style={styles.buttonText}>{loading ? 'SENDING...' : 'REQUEST RESET'}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

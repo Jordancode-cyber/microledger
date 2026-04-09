@@ -4,7 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
 import NumberPad from '../../components/NumberPad';
-import { loginUser } from './api';
+import { loginUser } from './auth';
 
 export default function PinInput() {
   const router = useRouter();

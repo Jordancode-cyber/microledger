@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
 import NumberPad from '../../components/NumberPad';
+import { processDeposit } from './api';
 
 export default function DepositFloat() {
   const router = useRouter();
+  const { phoneNumber } = useLocalSearchParams();
   const [amount, setAmount] = useState('0');
   const [provider, setProvider] = useState<'mtn' | 'airtel' | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleNumberPress = (num: string) => {
     setAmount(prev => prev === '0' ? num : prev + num);
@@ -18,14 +21,26 @@ export default function DepositFloat() {
     setAmount(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
   };
 
-  const handleDeposit = () => {
+  const handleDeposit = async () => {
     if (amount !== '0' && provider) {
-      // In the real app, this triggers the MTN/Airtel USSD push
-      Alert.alert(
-        "Deposit Initiated", 
-        `Check your ${provider.toUpperCase()} phone to approve the ${parseInt(amount).toLocaleString()} UGX deposit.`,
-        [{ text: "OK", onPress: () => router.push('/dashboard') }]
-      );
+      setLoading(true);
+      try {
+        await processDeposit({
+          amount: parseInt(amount, 10),
+          provider,
+          phoneNumber: String(phoneNumber || ''),
+        });
+
+        Alert.alert(
+          'Deposit Initiated',
+          `A ${parseInt(amount, 10).toLocaleString()} UGX deposit request has been sent via ${provider.toUpperCase()}.`,
+          [{ text: 'OK', onPress: () => router.push('/dashboard') }],
+        );
+      } catch (error: any) {
+        Alert.alert('Deposit failed', error.message || 'Unable to process deposit.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -69,11 +84,11 @@ export default function DepositFloat() {
         <NumberPad onNumberPress={handleNumberPress} onDelete={handleDelete} />
 
         <TouchableOpacity
-          style={[styles.button, (amount === '0' || !provider) && styles.buttonDisabled]}
+          style={[styles.button, (amount === '0' || !provider || loading) && styles.buttonDisabled]}
           onPress={handleDeposit}
-          disabled={amount === '0' || !provider}
+          disabled={amount === '0' || !provider || loading}
         >
-          <Text style={styles.buttonText}>REQUEST DEPOSIT</Text>
+          <Text style={styles.buttonText}>{loading ? 'REQUESTING...' : 'REQUEST DEPOSIT'}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

@@ -1,16 +1,28 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
+import { sendMoney } from './api';
 
 export default function Confirm() {
   const router = useRouter();
   const { amount, phoneNumber } = useLocalSearchParams();
+  const [loading, setLoading] = useState(false);
 
-  const handleApprove = () => {
-    // API CALL GOES HERE IN THE FUTURE
-    router.push({ pathname: '/success', params: { amount } });
+  const handleApprove = async () => {
+    setLoading(true);
+    try {
+      await sendMoney({
+        amount: parseInt(amount as string),
+        phoneNumber: String(phoneNumber),
+      });
+      router.push({ pathname: '/success', params: { amount } });
+    } catch (error: any) {
+      Alert.alert('Send failed', error.message || 'Unable to send money');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -34,8 +46,14 @@ export default function Confirm() {
           <View style={styles.row}><Text style={styles.rowLabel}>Fee:</Text><Text style={styles.freeText}>0 UGX</Text></View>
         </View>
 
-        <TouchableOpacity style={styles.btnApprove} onPress={handleApprove}>
-          <Text style={styles.btnText}>APPROVE & SEND</Text>
+        <TouchableOpacity 
+          style={[styles.btnApprove, loading && styles.btnDisabled]} 
+          onPress={handleApprove}
+          disabled={loading}
+        >
+          <Text style={styles.btnText}>
+            {loading ? 'SENDING...' : 'APPROVE & SEND'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -56,5 +74,6 @@ const styles = StyleSheet.create({
   rowValue: { fontWeight: '600', fontSize: 14 },
   freeText: { fontWeight: 'bold', color: '#00D084', fontSize: 14 },
   btnApprove: { width: '100%', backgroundColor: '#EAC435', padding: 18, borderRadius: 30, alignItems: 'center' },
+  btnDisabled: { opacity: 0.6 },
   btnText: { fontWeight: 'bold', fontSize: 16 }
 });

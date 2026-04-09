@@ -6,7 +6,7 @@ import BottomNav from '../../components/BottomNav';
 
 export default function Dashboard() {
   const router = useRouter();
-  const { userType, userName, balance } = useLocalSearchParams();
+  const { userType, userName, balance, phoneNumber } = useLocalSearchParams();
   
   const isVendor = String(userType || 'customer').toLowerCase() === 'vendor';
   const displayName = String(userName || (isVendor ? 'UCU Main Canteen' : 'John Doe'));
@@ -27,10 +27,10 @@ export default function Dashboard() {
 
           {isVendor && (
             <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/deposit')}>
+              <TouchableOpacity style={styles.actionBtn} onPress={() => router.push({ pathname: '/deposit', params: { phoneNumber: String(phoneNumber || '') } })}>
                 <Text style={styles.actionBtnText}>DEPOSIT</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.actionBtn} onPress={() => router.push('/withdraw')}>
+              <TouchableOpacity style={styles.actionBtn} onPress={() => router.push({ pathname: '/withdraw', params: { phoneNumber: String(phoneNumber || '') } })}>
                 <Text style={styles.actionBtnText}>WITHDRAW</Text>
               </TouchableOpacity>
             </View>
