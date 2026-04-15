@@ -1,98 +1,80 @@
-// src/services/api.ts
-
-// Automatically uses your local .env if it exists, otherwise falls back to your live Vercel backend!
-//const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://fibo-backend-7cid.vercel.app/api';
-
 import { supabase } from '../supabase';
 
-// 1. DEPOSIT FLOAT
-export const processDeposit = async ({ amount, provider, phoneNumber }: { amount: number, provider: string, phoneNumber: string }) => {
-  // Get current user
-  const { data: user, error: fetchError } = await supabase.from('users').select('balance').eq('phone_number', phoneNumber).single();
-  if (fetchError || !user) throw new Error('Could not find user account.');
+// Helper to detect network based on prefix
+const getNetworkLabel = (phone: string, isDeposit: boolean) => {
+  const mtnPrefixes = ['077', '078', '076', '086', '77', '78', '76', '86'];
+  const airtelPrefixes = ['070', '075', '020', '70', '75', '20'];
 
-  // Add the deposit amount
+  const isMTN = mtnPrefixes.some(prefix => String(phone).startsWith(prefix));
+  const isAirtel = airtelPrefixes.some(prefix => String(phone).startsWith(prefix));
+  
+  const network = isMTN ? 'MTN MoMo' : (isAirtel ? 'Airtel Money' : 'Network');
+  return isDeposit ? `${network} DEPOSIT` : `${network} WITHDRAW`;
+};
+
+// 1. DEPOSIT
+export const processDeposit = async ({ amount, phoneNumber }: { amount: number, phoneNumber: string }) => {
+  const { data: user } = await supabase.from('users').select('balance').eq('phone_number', phoneNumber).single();
+  if (!user) throw new Error('User not found');
   const newBalance = Number(user.balance || 0) + amount;
-
-  // Save back to database
-  const { error: updateError } = await supabase.from('users').update({ balance: newBalance }).eq('phone_number', phoneNumber);
-  if (updateError) throw new Error('Failed to update balance.');
-
-  return { success: true, newBalance };
+  await supabase.from('users').update({ balance: newBalance }).eq('phone_number', phoneNumber);
+  await supabase.from('transactions').insert([{
+    sender_phone: getNetworkLabel(phoneNumber, true),
+    receiver_phone: phoneNumber,
+    amount: amount,
+    transaction_type: 'deposit'
+  }]);
+  return { success: true };
 };
 
-// 2. WITHDRAW FLOAT
-export const processWithdrawal = async ({ amount, provider, phoneNumber }: { amount: number, provider: string, phoneNumber: string }) => {
-  const { data: user, error: fetchError } = await supabase.from('users').select('balance').eq('phone_number', phoneNumber).single();
-  if (fetchError || !user) throw new Error('Could not find user account.');
-
-  if (Number(user.balance) < amount) {
-    throw new Error('Insufficient float balance.');
-  }
-
-  // Subtract the withdrawal amount
-  const newBalance = Number(user.balance || 0) - amount;
-
-  const { error: updateError } = await supabase.from('users').update({ balance: newBalance }).eq('phone_number', phoneNumber);
-  if (updateError) throw new Error('Failed to update balance.');
-
-  return { success: true, newBalance };
+// 2. WITHDRAW
+export const processWithdrawal = async ({ amount, phoneNumber }: { amount: number, phoneNumber: string }) => {
+  const { data: user } = await supabase.from('users').select('balance').eq('phone_number', phoneNumber).single();
+  if (!user || Number(user.balance) < amount) throw new Error('Insufficient balance');
+  const newBalance = Number(user.balance) - amount;
+  await supabase.from('users').update({ balance: newBalance }).eq('phone_number', phoneNumber);
+  await supabase.from('transactions').insert([{
+    sender_phone: phoneNumber,
+    receiver_phone: getNetworkLabel(phoneNumber, false),
+    amount: amount,
+    transaction_type: 'withdraw'
+  }]);
+  return { success: true };
 };
 
-// 3. SEND CHANGE (Deduct Vendor, Add Customer, Auto-Sweep Check)
+// 3. SEND MONEY (The missing member)
 export const sendMoney = async ({ amount, senderPhone, customerPhone }: { amount: number, senderPhone: string, customerPhone: string }) => {
-  
-  // A. Check Vendor Account
-  const { data: vendor, error: vendorError } = await supabase.from('users').select('balance').eq('phone_number', senderPhone).single();
-  if (vendorError || !vendor) throw new Error('Could not find vendor account.');
-  if (Number(vendor.balance) < amount) throw new Error('Insufficient float to send this change.');
+  const { data: vendor } = await supabase.from('users').select('balance').eq('phone_number', senderPhone).single();
+  const { data: customer } = await supabase.from('users').select('balance').eq('phone_number', customerPhone).single();
 
-  // B. Check Customer Account
-  const { data: customer, error: customerError } = await supabase.from('users').select('balance').eq('phone_number', customerPhone).single();
-  if (customerError || !customer) throw new Error('Customer not found. Make sure they are registered on Fibo.');
+  if (!vendor || !customer) throw new Error('Account not found');
 
-  // C. Do the Initial Math
-  const newVendorBalance = Number(vendor.balance) - amount;
-  let newCustomerBalance = Number(customer.balance) + amount;
+  let newVendorBal = Number(vendor.balance) - amount;
+  let newCustomerBal = Number(customer.balance) + amount;
+  let sweep = false;
 
-  // D. THE AUTO-SWEEP TRIGGER (New Logic!)
-  const SWEEP_THRESHOLD = 5000;
-  let sweepTriggered = false;
-  
-  if (newCustomerBalance >= SWEEP_THRESHOLD) {
-    // Deduct the 5000 to "send" to their mobile money
-    newCustomerBalance -= SWEEP_THRESHOLD; 
-    sweepTriggered = true;
+  if (newCustomerBal >= 5000) {
+    newCustomerBal -= 5000;
+    sweep = true;
   }
 
-  // E. Save both updated balances back to the database
-  const { error: updateVendorError } = await supabase.from('users').update({ balance: newVendorBalance }).eq('phone_number', senderPhone);
-  if (updateVendorError) throw new Error('Failed to deduct from vendor.');
+  await supabase.from('users').update({ balance: newVendorBal }).eq('phone_number', senderPhone);
+  await supabase.from('users').update({ balance: newCustomerBal }).eq('phone_number', customerPhone);
 
-  const { error: updateCustomerError } = await supabase.from('users').update({ balance: newCustomerBalance }).eq('phone_number', customerPhone);
-  if (updateCustomerError) throw new Error('Failed to update customer balance.');
+  await supabase.from('transactions').insert([{
+    sender_phone: senderPhone,
+    receiver_phone: customerPhone,
+    amount: amount,
+    transaction_type: 'send'
+  }]);
 
-  // F. Print the standard receipt for the change
-  await supabase.from('transactions').insert([
-    {
-      sender_phone: senderPhone,      
-      receiver_phone: customerPhone, 
-      amount: amount,
-      transaction_type: 'send' 
-    }
-  ]);
-
-  // G. Print the Auto-Sweep receipt if it happened!
-  if (sweepTriggered) {
-    await supabase.from('transactions').insert([
-      {
-        sender_phone: customerPhone,
-        receiver_phone: 'MTN Mobile Money', // Or Airtel, depending on their setup
-        amount: SWEEP_THRESHOLD,
-        transaction_type: 'auto_sweep' // Matches the purple icon on your History screen!
-      }
-    ]);
+  if (sweep) {
+    await supabase.from('transactions').insert([{
+      sender_phone: customerPhone,
+      receiver_phone: 'MTN_MOBILE_MONEY',
+      amount: 5000,
+      transaction_type: 'auto_sweep'
+    }]);
   }
-
   return { success: true };
 };

@@ -1,128 +1,76 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
 import NumberPad from '../../components/NumberPad';
-import { processWithdrawal } from '../../src/services/api'; // Kept your updated path!
+import { processDeposit } from '../../src/services/api'; 
 
-export default function WithdrawFloat() {
+export default function Deposit() {
   const router = useRouter();
-  const { phoneNumber } = useLocalSearchParams();
+  const currentParams = useLocalSearchParams();
+  const { phoneNumber } = currentParams;
+
   const [amount, setAmount] = useState('0');
-  const [provider, setProvider] = useState<'mtn' | 'airtel' | null>(null);
   const [loading, setLoading] = useState(false);
-  const userBalance = 50000; // Mock balance
 
-  const handleNumberPress = (num: string) => {
-    setAmount(prev => prev === '0' ? num : prev + num);
-  };
+  // Simple visual logic for the UI to show which network is detected
+  const isMTN = ['077', '078', '076'].some(p => String(phoneNumber).startsWith(p));
 
-  const handleDelete = () => {
-    setAmount(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
-  };
-
-  const handleWithdraw = async () => {
-    if (parseInt(amount, 10) > userBalance) {
-      Alert.alert('Error', 'Insufficient float balance for this withdrawal.');
-      return;
-    }
-
-    if (amount !== '0' && provider) {
-      setLoading(true);
-      try {
-        await processWithdrawal({
-          amount: parseInt(amount, 10),
-          provider,
-          phoneNumber: String(phoneNumber || ''),
-        });
-
-        Alert.alert(
-          'Withdrawal Successful',
-          `${parseInt(amount, 10).toLocaleString()} UGX has been sent to your ${provider.toUpperCase()} mobile money account.`,
-          [{ text: 'OK', onPress: () => router.push('/dashboard') }],
-        );
-      } catch (error: any) {
-        Alert.alert('Withdrawal failed', error.message || 'Unable to process withdrawal.');
-      } finally {
-        setLoading(false);
-      }
+  const handleConfirm = async () => {
+    if (amount === '0' || loading) return;
+    setLoading(true);
+    try {
+      await processDeposit({ amount: parseInt(amount), phoneNumber: String(phoneNumber) });
+      router.replace({ pathname: '/success', params: { ...currentParams, amount } });
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+    <View style={styles.container}>
       <StatusBar style="dark" />
-      
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ChevronLeft size={28} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>WITHDRAW FLOAT</Text>
+        <TouchableOpacity onPress={() => router.back()}><ChevronLeft size={28} /></TouchableOpacity>
+        <Text style={styles.headerTitle}>DEPOSIT FLOAT</Text>
         <View style={{ width: 28 }} />
       </View>
 
-      <ScrollView 
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.amountContainer}>
-          <Text style={styles.currencyLabel}>UGX</Text>
-          <Text style={styles.amountText}>{parseInt(amount).toLocaleString()}</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.networkBadge}>
+          <Text style={styles.networkText}>Detected: {isMTN ? 'MTN MoMo' : 'Airtel Money'}</Text>
         </View>
+        
+        <Text style={styles.amountDisplay}>{parseInt(amount).toLocaleString()} UGX</Text>
+        
+        <NumberPad 
+          onNumberPress={(num) => setAmount(prev => prev === '0' ? num : prev + num)} 
+          onDelete={() => setAmount(prev => prev.length > 1 ? prev.slice(0, -1) : '0')} 
+        />
 
-        <Text style={styles.label}>Select Receiving Account</Text>
-        <View style={styles.providerContainer}>
-          <TouchableOpacity 
-            style={[styles.providerBtn, provider === 'mtn' && styles.providerMtn]}
-            onPress={() => setProvider('mtn')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.providerText, provider === 'mtn' && styles.providerTextActive]}>MTN MoMo</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.providerBtn, provider === 'airtel' && styles.providerAirtel]}
-            onPress={() => setProvider('airtel')}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.providerText, provider === 'airtel' && styles.providerTextActiveWhite]}>Airtel Money</Text>
-          </TouchableOpacity>
-        </View>
-
-        <NumberPad onNumberPress={handleNumberPress} onDelete={handleDelete} />
-
-        <TouchableOpacity
-          style={[styles.button, (amount === '0' || !provider || loading) && styles.buttonDisabled]}
-          onPress={handleWithdraw}
-          disabled={amount === '0' || !provider || loading}
+        <TouchableOpacity 
+          style={[styles.mainBtn, (amount === '0' || loading) && { opacity: 0.5 }]} 
+          onPress={handleConfirm}
+          disabled={amount === '0' || loading}
         >
-          <Text style={styles.buttonText}>{loading ? 'REQUESTING...' : 'REQUEST WITHDRAWAL'}</Text>
+          <Text style={styles.btnText}>{loading ? "PROCESSING..." : "CONFIRM DEPOSIT"}</Text>
         </TouchableOpacity>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#E8E9EB' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },
-  backButton: { padding: 8, marginLeft: -8 },
-  headerTitle: { fontSize: 16, fontWeight: '700', letterSpacing: 1 },
-  content: { flexGrow: 1, paddingHorizontal: 24, alignItems: 'center', paddingBottom: 40 },
-  amountContainer: { alignItems: 'center', marginBottom: 32 },
-  currencyLabel: { fontSize: 16, color: '#666', fontWeight: '600' },
-  amountText: { fontSize: 48, fontWeight: 'bold', color: '#003366' },
-  label: { width: '100%', fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 12, textAlign: 'center' },
-  providerContainer: { flexDirection: 'row', width: '100%', gap: 12, marginBottom: 24 },
-  providerBtn: { flex: 1, backgroundColor: '#FFF', paddingVertical: 16, borderRadius: 16, borderWidth: 2, borderColor: '#E2E8F0', alignItems: 'center' },
-  providerMtn: { backgroundColor: '#FFCC00', borderColor: '#FFCC00' },
-  providerAirtel: { backgroundColor: '#FF0000', borderColor: '#FF0000' },
-  providerText: { fontWeight: '700', color: '#666' },
-  providerTextActive: { color: '#000' },
-  providerTextActiveWhite: { color: '#FFF' },
-  button: { width: '100%', backgroundColor: '#EAC435', paddingVertical: 18, borderRadius: 30, alignItems: 'center', marginTop: 10 },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { fontWeight: 'bold', fontSize: 16, color: '#000' }
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 10 },
+  headerTitle: { fontSize: 16, fontWeight: 'bold' },
+  scrollContent: { paddingHorizontal: 24, alignItems: 'center', paddingBottom: 40 },
+  networkBadge: { backgroundColor: '#FFF', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginTop: 10 },
+  networkText: { fontSize: 12, fontWeight: '700', color: '#666' },
+  amountDisplay: { fontSize: 54, fontWeight: 'bold', color: '#003366', marginVertical: 30 },
+  mainBtn: { width: '100%', backgroundColor: '#EAC435', padding: 20, borderRadius: 30, alignItems: 'center', marginTop: 20 },
+  btnText: { fontWeight: 'bold', fontSize: 16 }
 });
