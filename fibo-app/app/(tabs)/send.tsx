@@ -1,19 +1,28 @@
 import React, { useState } from 'react';
-// 1. We added ScrollView to the imports!
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, AlertCircle } from 'lucide-react-native';
 import NumberPad from '../../components/NumberPad';
 
 export default function SendMoney() {
   const router = useRouter();
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const currentParams = useLocalSearchParams();
+  const { phoneNumber: vendorPhone, balance } = currentParams;
+  const userBalance = Number(balance || 0);
+
+  const [customerPhone, setCustomerPhone] = useState('');
   const [amount, setAmount] = useState('0');
-  const userBalance = 50000; // Mock balance
 
   const handleNumberPress = (num: string) => {
-    setAmount(prev => prev === '0' ? num : prev + num);
+    setAmount(prev => {
+      const nextValue = prev === '0' ? num : prev + num;
+      // THE MICRO-CURRENCY LOCK: Prevent typing any number over 999
+      if (parseInt(nextValue) > 999) {
+        return prev; 
+      }
+      return nextValue;
+    });
   };
 
   const handleDelete = () => {
@@ -21,14 +30,24 @@ export default function SendMoney() {
   };
 
   const handleConfirm = () => {
-    if (amount !== '0' && phoneNumber) {
+    if (amount !== '0' && customerPhone) {
+      if (parseInt(amount) > 999) {
+        Alert.alert('Limit Reached', 'Fibo is for micro-change only. Maximum amount is 999 UGX.');
+        return;
+      }
+      
       if (parseInt(amount) <= userBalance) {
         router.push({
           pathname: '/confirm',
-          params: { amount, phoneNumber }
+          params: { 
+            ...currentParams, 
+            amount, 
+            customerPhone: customerPhone,
+            senderPhone: vendorPhone
+          }
         });
       } else {
-        alert('Insufficient float balance');
+        Alert.alert('Error', 'Insufficient float balance to send this amount.');
       }
     }
   };
@@ -45,13 +64,14 @@ export default function SendMoney() {
         <View style={{ width: 28 }} />
       </View>
 
-      {/* 2. Replaced <View> with <ScrollView> to make it fluid! */}
-      {/* keyboardShouldPersistTaps="handled" is the magic that lets you click the button while the keyboard is open */}
-      <ScrollView 
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        
+        {/* Added a Limit Badge */}
+        <View style={styles.limitBadge}>
+          <AlertCircle size={14} color="#059669" />
+          <Text style={styles.limitText}>Micro-change limit: 999 UGX</Text>
+        </View>
+
         <View style={styles.amountContainer}>
           <Text style={styles.currencyLabel}>UGX</Text>
           <Text style={styles.amountText}>{parseInt(amount).toLocaleString()}</Text>
@@ -63,17 +83,17 @@ export default function SendMoney() {
             style={styles.input}
             placeholder="07XXXXXXXX"
             keyboardType="phone-pad"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
+            value={customerPhone}
+            onChangeText={setCustomerPhone}
           />
         </View>
 
         <NumberPad onNumberPress={handleNumberPress} onDelete={handleDelete} />
 
         <TouchableOpacity
-          style={[styles.button, (amount === '0' || !phoneNumber) && styles.buttonDisabled]}
+          style={[styles.button, (amount === '0' || !customerPhone) && styles.buttonDisabled]}
           onPress={handleConfirm}
-          disabled={amount === '0' || !phoneNumber}
+          disabled={amount === '0' || !customerPhone}
         >
           <Text style={styles.buttonText}>CONFIRM & CONTINUE</Text>
         </TouchableOpacity>
@@ -87,10 +107,9 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },
   backButton: { padding: 8, marginLeft: -8 },
   headerTitle: { fontSize: 16, fontWeight: '700', letterSpacing: 1 },
-  
-  // 3. Changed `flex: 1` to `flexGrow: 1` and added paddingBottom so nothing gets cut off!
   content: { flexGrow: 1, paddingHorizontal: 24, alignItems: 'center', paddingBottom: 40 },
-  
+  limitBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#D1FAE5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginBottom: 16, gap: 6 },
+  limitText: { color: '#059669', fontSize: 12, fontWeight: '700' },
   amountContainer: { alignItems: 'center', marginBottom: 32 },
   currencyLabel: { fontSize: 16, color: '#666', fontWeight: '600' },
   amountText: { fontSize: 48, fontWeight: 'bold', color: '#003366' },

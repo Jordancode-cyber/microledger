@@ -1,11 +1,20 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+// 1. We imported useLocalSearchParams to get the live user data!
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft, User, Shield, HelpCircle, LogOut } from 'lucide-react-native';
 
 export default function Profile() {
   const router = useRouter();
+  
+  // 2. We grab the specific user's details passed from the navigation
+  const { userType, userName, phoneNumber } = useLocalSearchParams();
+
+  // 3. Format the data so it always looks good
+  const isVendor = String(userType || 'customer').toLowerCase() === 'vendor';
+  const displayName = String(userName || (isVendor ? 'Vendor Account' : 'Customer Account'));
+  const displayPhone = String(phoneNumber || '');
 
   const handleLogout = () => {
     Alert.alert(
@@ -13,6 +22,7 @@ export default function Profile() {
       "Are you sure you want to log out?",
       [
         { text: "Cancel", style: "cancel" },
+        // On logout, we send them completely back to the Welcome screen to clear the data
         { text: "Log Out", style: "destructive", onPress: () => router.replace('/welcome') }
       ]
     );
@@ -34,10 +44,15 @@ export default function Profile() {
           <View style={styles.avatarCircle}>
             <User size={48} color="#FFF" />
           </View>
-          <Text style={styles.userName}>UCU Main Canteen</Text>
-          <Text style={styles.userPhone}>0771 234 567</Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>VERIFIED VENDOR</Text>
+          
+          {/* 4. Displaying the LIVE data! */}
+          <Text style={styles.userName}>{displayName}</Text>
+          <Text style={styles.userPhone}>{displayPhone}</Text>
+          
+          <View style={[styles.badge, !isVendor && styles.customerBadge]}>
+            <Text style={[styles.badgeText, !isVendor && styles.customerBadgeText]}>
+              {isVendor ? 'VERIFIED VENDOR' : 'VERIFIED CUSTOMER'}
+            </Text>
           </View>
         </View>
 
@@ -74,6 +89,9 @@ const styles = StyleSheet.create({
   userPhone: { fontSize: 16, color: '#666', marginBottom: 12 },
   badge: { backgroundColor: '#EAC435', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   badgeText: { fontSize: 10, fontWeight: 'bold', color: '#000', letterSpacing: 1 },
+  // Added a specific style for when a Customer logs in
+  customerBadge: { backgroundColor: '#E2E8F0' },
+  customerBadgeText: { color: '#64748B' },
   menuContainer: { gap: 16 },
   menuItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 16, borderRadius: 20, elevation: 1 },
   menuIconBox: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center', marginRight: 16 },

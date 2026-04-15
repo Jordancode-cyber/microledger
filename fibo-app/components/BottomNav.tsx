@@ -1,11 +1,15 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useRouter, usePathname } from 'expo-router';
+// 1. Added useLocalSearchParams to the import
+import { useRouter, usePathname, useLocalSearchParams } from 'expo-router';
 import { Home, Send, History, User } from 'lucide-react-native';
 
 export default function BottomNav({ isVendor = true }) {
   const router = useRouter();
   const pathname = usePathname();
+  
+  // 2. MAGIC FIX: Grab all the current parameters (userType, phoneNumber, etc.)
+  const currentParams = useLocalSearchParams();
 
   const navItems = isVendor 
     ? [
@@ -29,7 +33,8 @@ export default function BottomNav({ isVendor = true }) {
           <TouchableOpacity 
             key={item.path} 
             style={styles.navItem} 
-            onPress={() => router.push(item.path as any)}
+            // 3. Pass the params inside an object so the next screen remembers them!
+            onPress={() => router.push({ pathname: item.path, params: currentParams } as any)}
           >
             <Icon size={24} color={isActive ? '#000' : '#9CA3AF'} />
             <Text style={[styles.label, isActive && styles.activeLabel]}>

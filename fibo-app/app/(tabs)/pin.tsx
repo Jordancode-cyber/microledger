@@ -41,6 +41,7 @@ export default function PinInput() {
                 userType: String(user.user_type || 'customer'),
                 userName,
                 balance,
+                phoneNumber: String(phoneNumber || ''), // <-- ADD THIS EXACT LINE!
               },
             });
           } catch (loginError: any) {

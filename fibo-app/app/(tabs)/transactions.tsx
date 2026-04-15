@@ -1,23 +1,46 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ChevronLeft, Download, ArrowUpRight, ArrowDownLeft, TrendingUp } from 'lucide-react-native';
-
-const MOCK_TRANSACTIONS = [
-  { id: '1', type: 'send', amount: 500, name: 'John Doe', date: 'Oct 24, 2026', time: '14:30', status: 'COMPLETED' },
-  { id: '2', type: 'auto_sweep', amount: 5000, name: 'MTN Mobile Money', date: 'Oct 24, 2026', time: '09:15', status: 'COMPLETED' },
-  { id: '3', type: 'deposit', amount: 50000, name: 'Float Deposit', date: 'Oct 23, 2026', time: '08:00', status: 'COMPLETED' },
-];
+import { ChevronLeft, Download, ArrowUpRight, ArrowDownLeft } from 'lucide-react-native';
+import BottomNav from '../../components/BottomNav';
+import { supabase } from '../../src/supabase'; // Make sure this path is correct!
 
 export default function AllTransactions() {
   const router = useRouter();
+  const currentParams = useLocalSearchParams();
+  const { userType, phoneNumber } = currentParams;
+  const isVendor = String(userType || 'customer').toLowerCase() === 'vendor';
 
-  const renderIcon = (type: string) => {
-    if (type === 'send') return <View style={[styles.iconBox, { backgroundColor: '#FEE2E2' }]}><ArrowUpRight size={20} color="#DC2626" /></View>;
-    if (type === 'auto_sweep') return <View style={[styles.iconBox, { backgroundColor: '#F3E8FF' }]}><TrendingUp size={20} color="#9333EA" /></View>;
-    return <View style={[styles.iconBox, { backgroundColor: '#DBEAFE' }]}><ArrowDownLeft size={20} color="#2563EB" /></View>;
-  };
+  // State to hold our live database transactions
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch the transactions every time the screen opens
+  useFocusEffect(
+    useCallback(() => {
+      const fetchHistory = async () => {
+        setLoading(true);
+        if (phoneNumber) {
+          const { data, error } = await supabase
+            .from('transactions')
+            .select('*')
+            // Fetch if they are the sender OR the receiver
+            .or(`sender_phone.eq.${phoneNumber},receiver_phone.eq.${phoneNumber}`)
+            .order('created_at', { ascending: false }); // Newest first
+
+          if (data && !error) {
+            setTransactions(data);
+          }
+        }
+        setLoading(false);
+      };
+      fetchHistory();
+    }, [phoneNumber])
+  );
+
+  // Determine if money is coming IN or going OUT
+  const isMoneyOut = (tx: any) => tx.sender_phone === phoneNumber;
 
   return (
     <View style={styles.container}>
@@ -33,21 +56,32 @@ export default function AllTransactions() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.listContainer}>
-        {MOCK_TRANSACTIONS.map((tx) => (
-          <View key={tx.id} style={styles.txCard}>
-            {renderIcon(tx.type)}
-            <View style={styles.txDetails}>
-              <Text style={styles.txName}>{tx.name}</Text>
-              <Text style={styles.txDate}>{tx.date} • {tx.time}</Text>
-              <Text style={styles.txStatus}>{tx.status}</Text>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.listContainer}>
+        {loading ? (
+          <ActivityIndicator size="large" color="#003366" style={{ marginTop: 50 }} />
+        ) : transactions.length === 0 ? (
+          <Text style={styles.emptyText}>No transactions yet.</Text>
+        ) : (
+          transactions.map((tx) => (
+            <View key={tx.id} style={styles.txCard}>
+              <View style={[styles.iconBox, { backgroundColor: isMoneyOut(tx) ? '#FEE2E2' : '#DBEAFE' }]}>
+                {isMoneyOut(tx) ? <ArrowUpRight size={20} color="#DC2626" /> : <ArrowDownLeft size={20} color="#2563EB" />}
+              </View>
+              <View style={styles.txDetails}>
+                {/* Show the OTHER person's number */}
+                <Text style={styles.txName}>{isMoneyOut(tx) ? tx.receiver_phone : tx.sender_phone}</Text>
+                <Text style={styles.txDate}>{new Date(tx.created_at).toLocaleDateString()} • {new Date(tx.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
+                <Text style={styles.txStatus}>COMPLETED</Text>
+              </View>
+              <Text style={[styles.txAmount, { color: isMoneyOut(tx) ? '#DC2626' : '#059669' }]}>
+                {isMoneyOut(tx) ? '-' : '+'}{tx.amount}
+              </Text>
             </View>
-            <Text style={styles.txAmount}>
-              {tx.type === 'send' ? '-' : '+'}{tx.amount}
-            </Text>
-          </View>
-        ))}
+          ))
+        )}
       </ScrollView>
+
+      <BottomNav isVendor={isVendor} />
     </View>
   );
 }
@@ -65,5 +99,6 @@ const styles = StyleSheet.create({
   txName: { fontSize: 16, fontWeight: '700', color: '#000', marginBottom: 4 },
   txDate: { fontSize: 12, color: '#666', marginBottom: 4 },
   txStatus: { fontSize: 10, fontWeight: 'bold', color: '#059669', letterSpacing: 1 },
-  txAmount: { fontSize: 16, fontWeight: 'bold', color: '#000' }
+  txAmount: { fontSize: 16, fontWeight: 'bold' },
+  emptyText: { textAlign: 'center', color: '#666', marginTop: 50, fontSize: 16 }
 });

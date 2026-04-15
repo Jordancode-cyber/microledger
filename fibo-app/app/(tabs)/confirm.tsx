@@ -3,11 +3,15 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ChevronLeft } from 'lucide-react-native';
-import { sendMoney } from '../../src/services/api';
+import { sendMoney } from '../../src/services/api'; // Path to your api.ts
 
 export default function Confirm() {
   const router = useRouter();
-  const { amount, phoneNumber } = useLocalSearchParams();
+  
+  // 1. Grab ALL current parameters so we can pass them along later
+  const currentParams = useLocalSearchParams();
+  const { amount, customerPhone, senderPhone } = currentParams;
+  
   const [loading, setLoading] = useState(false);
 
   const handleApprove = async () => {
@@ -15,9 +19,14 @@ export default function Confirm() {
     try {
       await sendMoney({
         amount: parseInt(amount as string),
-        phoneNumber: String(phoneNumber),
+        senderPhone: String(senderPhone), 
+        // 2. ADDED THIS: Tell the API exactly who receives the money!
+        customerPhone: String(customerPhone) 
       });
-      router.push({ pathname: '/success', params: { amount } });
+      
+      // 3. ADDED THIS: Pass ALL params to success so the app doesn't forget you are a Vendor!
+      router.push({ pathname: '/success', params: currentParams });
+      
     } catch (error: any) {
       Alert.alert('Send failed', error.message || 'Unable to send money');
     } finally {
@@ -41,7 +50,7 @@ export default function Confirm() {
           
           <View style={styles.divider} />
           
-          <View style={styles.row}><Text style={styles.rowLabel}>To Number:</Text><Text style={styles.rowValue}>{phoneNumber}</Text></View>
+          <View style={styles.row}><Text style={styles.rowLabel}>To Number:</Text><Text style={styles.rowValue}>{customerPhone}</Text></View>
           <View style={styles.row}><Text style={styles.rowLabel}>Type:</Text><Text style={styles.rowValue}>Digital Change</Text></View>
           <View style={styles.row}><Text style={styles.rowLabel}>Fee:</Text><Text style={styles.freeText}>0 UGX</Text></View>
         </View>

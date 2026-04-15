@@ -36,9 +36,24 @@ export default function PinSetup() {
                   pin: newConfirmPin,
                   name: String(name || ''),
                   business_name: String(businessName || ''),
-                  balance: 0 // New users start with 0 float
+    // NEW LOGIC: Give vendors 5000, customers 0
+                  balance: String(userType).toLowerCase() === 'vendor' ? 5000 : 0 
                 }
               ]).select().single();
+
+              // Add this right below the user creation block!
+          if (!error && String(userType).toLowerCase() === 'vendor') {
+               const { error: logError } = await supabase.from('transactions').insert([
+                {
+                  sender_phone: 'FIBO_SYSTEM', 
+                  receiver_phone: String(phoneNumber || ''),
+                  amount: 5000,
+                  transaction_type: 'deposit' // Remember we changed this from 'type' to 'transaction_type'!
+              }
+            ]);
+  
+  if (logError) console.error("Failed to log welcome bonus:", logError);
+}
 
               if (error) throw error;
 
